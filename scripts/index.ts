@@ -8,7 +8,7 @@ const BACKUPS_DIR = `./backups_${process.env.DB}`.trim()
 
 const getEntries = () => {
   const entries = fs.readdirSync(BACKUPS_DIR)
-  if (entries.length === 0) throw new Error('No entries found in MongoDB backups.')
+  if (entries.length === 0) throw new Error(`No entries found in ${process.env.DB} database backups.`)
 
   const retentionHours = process.env.RETENTION_HOURS ? parseInt(process.env.RETENTION_HOURS) : null
   if (!retentionHours || isNaN(retentionHours)) throw new Error('Invalid retention hours value.')
@@ -26,7 +26,7 @@ const listEntriesToDelete = (entries: string[], retentionHours: number) => {
   const retentionDate = new Date(Date.now() - retentionHours * 60 * 60 * 1000)
 
   return entries.filter(entry => {
-    const entryDate = fs.statSync(`${BACKUPS_DIR}/${entry}`).ctime
+    const entryDate = fs.statSync(`${BACKUPS_DIR}/${entry}`).mtime
     return entryDate < retentionDate
   })
 }
