@@ -15,17 +15,17 @@ fi
 echo "MongoDB backup started..."
 
 #mongodump --uri="$URI" --out="$UPLOAD/$DATE"
-docker exec -t mongo mongodump --uri="$URI" --archive="/home/$DATE.archive" --gzip
+docker exec -t mongo mongodump --uri="$URI" --archive="home/$DATE.archive" --gzip
 
-tar -cvpzf "$UPLOAD/mongo_backup_$DATE.tar.gz" -C "$UPLOAD" "$DATE.archive"
+tar -cvpzf $UPLOAD/mongo_backup_$DATE.tar.gz -C $UPLOAD $DATE.archive
 
-rm -rf "$UPLOAD/$DATE.archive"
+rm -rf $UPLOAD/$DATE.archive
 
 cd ~/mega-dbs-backup-script
 echo "Uploading MongoDB backup to MEGA Drive..."
 pnpm run upload:mongo
 
-find "$UPLOAD" -type f -mmin +$((RETENTION_HOURS * 60)) -name 'mongo_backup_*.tar.gz' -delete
+find $UPLOAD -type f -mmin +$((RETENTION_HOURS * 60)) -name 'mongo_backup_*.tar.gz' -delete
 
 echo "MongoDB backup completed successfully."
 echo ""
