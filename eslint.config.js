@@ -1,16 +1,15 @@
-import { fileURLToPath } from 'node:url'
-import { defineConfig } from 'eslint/config'
-import globals from 'globals'
-import js from '@eslint/js'
-import tseslint from 'typescript-eslint'
-import eslintPluginPrettier from 'eslint-plugin-prettier/recommended'
-import { includeIgnoreFile } from '@eslint/compat'
-import stylistic from '@stylistic/eslint-plugin'
+import { fileURLToPath } from 'node:url';
+import { defineConfig } from 'eslint/config';
+import globals from 'globals';
+import js from '@eslint/js';
+import tseslint from 'typescript-eslint';
+import eslintPluginPrettier from 'eslint-plugin-prettier/recommended';
+import { includeIgnoreFile } from '@eslint/compat';
+import stylistic from '@stylistic/eslint-plugin';
 
-const gitignorePath = fileURLToPath(new URL('./.gitignore', import.meta.url))
+const gitignorePath = fileURLToPath(new URL('./.gitignore', import.meta.url));
 
 export default defineConfig([
-  { files: ['**/*.{js,mjs,cjs,ts}'] },
   { files: ['**/*.{js,mjs,cjs,ts}'], languageOptions: { globals: globals.node } },
   js.configs.recommended,
   tseslint.configs.recommended,
@@ -21,7 +20,7 @@ export default defineConfig([
     rules: {
       'no-unused-vars': 'off',
       'no-console': ['error', { allow: ['log', 'info', 'warn', 'error'] }],
-      '@stylistic/semi': ['error', 'never'],
+      '@stylistic/semi': 'error',
       '@stylistic/quotes': ['error', 'single', { avoidEscape: true }],
       '@stylistic/arrow-parens': ['error', 'as-needed'],
       '@stylistic/no-multiple-empty-lines': ['error', { max: 1 }],
@@ -34,4 +33,4 @@ export default defineConfig([
       '@typescript-eslint/no-explicit-any': 'off',
     },
   },
-])
+]);

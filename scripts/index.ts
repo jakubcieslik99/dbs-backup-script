@@ -1,98 +1,98 @@
-import * as dotenv from 'dotenv'
-import * as fs from 'fs'
-import { ReadStream } from 'fs'
-import { Storage } from 'megajs'
+import * as dotenv from 'dotenv';
+import * as fs from 'fs';
+import { ReadStream } from 'fs';
+import { Storage } from 'megajs';
 
-dotenv.config({ path: './.env' })
-const BACKUPS_DIR = `./backups_${process.env.DB}`.trim()
+dotenv.config({ path: './.env' });
+const BACKUPS_DIR = `./backups_${process.env.DB}`.trim();
 
 const getEntries = () => {
-  const entries = fs.readdirSync(BACKUPS_DIR)
-  if (entries.length === 0) throw new Error(`No entries found in ${process.env.DB} database backups.`)
+  const entries = fs.readdirSync(BACKUPS_DIR);
+  if (entries.length === 0) throw new Error(`No entries found in ${process.env.DB} database backups.`);
 
-  const retentionHours = process.env.RETENTION_HOURS ? parseInt(process.env.RETENTION_HOURS) : null
-  if (!retentionHours || isNaN(retentionHours)) throw new Error('Invalid retention hours value.')
+  const retentionHours = process.env.RETENTION_HOURS ? parseInt(process.env.RETENTION_HOURS) : null;
+  if (!retentionHours || isNaN(retentionHours)) throw new Error('Invalid retention hours value.');
 
-  const entriesToDelete = listEntriesToDelete(entries, retentionHours)
+  const entriesToDelete = listEntriesToDelete(entries, retentionHours);
 
   const newestEntry = entries.reduce((acc, currentEntry) => {
-    return currentEntry > acc ? currentEntry : acc
-  }, entries[0])
+    return currentEntry > acc ? currentEntry : acc;
+  }, entries[0]);
 
-  return { newestEntry, entriesToDelete }
-}
+  return { newestEntry, entriesToDelete };
+};
 
 const listEntriesToDelete = (entries: string[], retentionHours: number) => {
-  const retentionDate = new Date(Date.now() - retentionHours * 60 * 60 * 1000)
+  const retentionDate = new Date(Date.now() - retentionHours * 60 * 60 * 1000);
 
   return entries.filter(entry => {
-    const entryDate = fs.statSync(`${BACKUPS_DIR}/${entry}`).mtime
-    return entryDate < retentionDate
-  })
-}
+    const entryDate = fs.statSync(`${BACKUPS_DIR}/${entry}`).mtime;
+    return entryDate < retentionDate;
+  });
+};
 
 const prepareStorage = async () => {
   const storage = new Storage({
     email: process.env.MEGA_EMAIL || '',
     password: process.env.MEGA_PASSWORD || '',
     userAgent: process.env.MEGA_USER_AGENT || '',
-  })
-  await storage.ready
+  });
+  await storage.ready;
 
-  const storageDirectory = await prepareStorageDirectory(storage)
-  storage.root = storageDirectory
+  const storageDirectory = await prepareStorageDirectory(storage);
+  storage.root = storageDirectory;
 
-  return storage
-}
+  return storage;
+};
 
 const prepareStorageDirectory = async (storage: Storage) => {
-  const directoryName = process.env.PROJECT_NAME || 'mega-dbs-backup-script'
+  const directoryName = process.env.PROJECT_NAME || 'mega-dbs-backup-script';
 
-  const directory = storage.root.children?.find(path => path.name === directoryName)
-  if (directory) return directory
+  const directory = storage.root.children?.find(path => path.name === directoryName);
+  if (directory) return directory;
 
-  return await storage.mkdir(directoryName)
-}
+  return await storage.mkdir(directoryName);
+};
 
 const uploadNewestEntry = async (storage: Storage, newestEntry: string) => {
-  const filePath = `${BACKUPS_DIR}/${newestEntry}`.trim()
-  const fileSize = (await fs.promises.stat(filePath)).size
+  const filePath = `${BACKUPS_DIR}/${newestEntry}`.trim();
+  const fileSize = (await fs.promises.stat(filePath)).size;
 
-  const fileStream: ReadStream = fs.createReadStream(filePath)
+  const fileStream: ReadStream = fs.createReadStream(filePath);
   const fileBuffer: Buffer = await new Promise((resolve, reject) => {
-    const chunks: Buffer[] = []
-    fileStream.on('data', (chunk: Buffer | string) => chunks.push(chunk as Buffer))
-    fileStream.on('end', () => resolve(Buffer.concat(chunks)))
-    fileStream.on('error', reject)
-  })
+    const chunks: Buffer[] = [];
+    fileStream.on('data', (chunk: Buffer | string) => chunks.push(chunk as Buffer));
+    fileStream.on('end', () => resolve(Buffer.concat(chunks)));
+    fileStream.on('error', reject);
+  });
 
-  const newFile = await storage.upload({ name: newestEntry, size: fileSize }, fileBuffer).complete
-  const newFileLink = await newFile.link(false)
-  console.log(`[LOG]: Successfully uploaded file: ${newestEntry} to MEGA Drive: ${newFileLink}.`)
-}
+  const newFile = await storage.upload({ name: newestEntry, size: fileSize }, fileBuffer).complete;
+  const newFileLink = await newFile.link(false);
+  console.log(`[LOG]: Successfully uploaded file: ${newestEntry} to MEGA Drive: ${newFileLink}.`);
+};
 
 const deleteFiles = async (storage: Storage, entriesToDelete: string[]) => {
-  const uploadedFiles = Object.values(storage.files)
-  if (uploadedFiles.length === 0 || entriesToDelete.length === 0) return
+  const uploadedFiles = Object.values(storage.files);
+  if (uploadedFiles.length === 0 || entriesToDelete.length === 0) return;
 
-  const filesToDelete = uploadedFiles.filter(file => entriesToDelete.includes(file.name as string))
+  const filesToDelete = uploadedFiles.filter(file => entriesToDelete.includes(file.name as string));
 
-  await Promise.all(filesToDelete.map(file => file.delete(true)))
-  console.log('[LOG]: Successfully deleted files beyond the retention time from MEGA Drive.')
-}
+  await Promise.all(filesToDelete.map(file => file.delete(true)));
+  console.log('[LOG]: Successfully deleted files beyond the retention time from MEGA Drive.');
+};
 
 try {
-  const { newestEntry, entriesToDelete } = getEntries()
+  const { newestEntry, entriesToDelete } = getEntries();
 
-  const storage = await prepareStorage()
+  const storage = await prepareStorage();
 
-  await uploadNewestEntry(storage, newestEntry)
-  await deleteFiles(storage, entriesToDelete)
+  await uploadNewestEntry(storage, newestEntry);
+  await deleteFiles(storage, entriesToDelete);
 
-  await storage.close()
-  process.exit(0)
+  await storage.close();
+  process.exit(0);
 } catch (error) {
-  if (error instanceof Error) console.error(`[ERR]: ${error.message}`)
-  else console.error(`[ERR]: ${error}`)
-  process.exit(1)
+  if (error instanceof Error) console.error(`[ERR]: ${error.message}`);
+  else console.error(`[ERR]: ${error}`);
+  process.exit(1);
 }
